@@ -17,27 +17,38 @@ app.get("/", (req,res) => {
   res.send("Hello!");
 });
 
+//Load main page with contents of URL "Database"
 app.get("/urls", (req, res) => {
   const templateVars = { urls: urlDatabase };
   res.render("urls_index", templateVars);
 });
 
+//Catch when user Submits a new url
 app.post("/urls", (req, res) => {
   const sURL = generateRandomString();
   urlDatabase[sURL] = req.body.longURL;
   res.redirect("/urls/" + sURL);
 });
 
-
+//Catch when user clicks on "Create New URL"
 app.get("/urls/new", (req, res) => {
   res.render("urls_new");
 });
 
+//
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
-  res.render("urls_show", templateVars);
+  const templateVars = { urls: urlDatabase };
+  res.render("urls_index", templateVars);
 });
 
+//catch when user clicks on the delete button
+app.post("/urls/:shortURL/delete", (req, res) => {
+  delete urlDatabase[req.params.shortURL];
+  const templateVars = { urls: urlDatabase };
+  res.render("urls_index", templateVars);
+});
+
+//Redirect to the shortened URL specified by the user
 app.get("/u/:shortURL", (req, res) => {
   const longURL = urlDatabase[req.params.shortURL];
   res.redirect(longURL);

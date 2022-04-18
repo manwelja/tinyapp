@@ -18,6 +18,7 @@
         <tr>
           <th scope="col">Short URL</th>
           <th scope="col">Long URL</th>
+          <th scope="col">Delete</th>
         </tr>
       </thead>
       <tbody>
@@ -25,6 +26,7 @@
           <tr>
             <td><%= url %></td>
             <td><%= urls[url] %></td>
+            <td><form method="POST" action="/urls/<%= url %>/delete"><button class="btn" style="background-color: transparent; border: 1; border-color: #f44336; color: #f44336">Delete</button></form></td>
           </tr>
         <% } %>
       </tbody>
