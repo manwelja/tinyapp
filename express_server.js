@@ -22,11 +22,28 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new");
 });
 
+//catch when user clicks on the edit button
+app.post("/urls/:id", (req, res) => {
+  const id = req.params.id;
+  urlDatabase[id] = req.body.longURL;
+  console.log(urlDatabase);
+  res.redirect("/urls");
+});
+
 //catch when user clicks on the delete button
 app.post("/urls/:shortURL/delete", (req, res) => {
   delete urlDatabase[req.params.shortURL];
   res.redirect("/urls");
 });
+
+//catch when user clicks on the edit button
+app.post("/urls/:shortURL/edit", (req, res) => {
+  //delete urlDatabase[req.params.shortURL];
+  const shortURL = req.params.shortURL;
+  const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL };
+  res.render("urls_show", templateVars);
+});
+
 
 //
 app.get("/urls/:shortURL", (req, res) => {
@@ -40,7 +57,7 @@ app.get("/urls/:shortURL", (req, res) => {
 app.get("/u/:shortURL", (req, res) => {
   const longURL = urlDatabase[req.params.shortURL];
   //need to catch error if page not found
-  res.redirect(longURL, false);
+  res.redirect(longURL);
 });
 
 //Load main page with contents of URL "Database"
