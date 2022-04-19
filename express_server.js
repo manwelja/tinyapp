@@ -45,7 +45,7 @@ app.post("/urls/:shortURL/edit", (req, res) => {
 });
 
 
-//
+//catch when a shortURL is included in the URL and launch the "show" page for it
 app.get("/urls/:shortURL", (req, res) => {
   //get the short URL from the URL string parameter and use it to retrieve the long URL
   const shortURL = req.params.shortURL;
