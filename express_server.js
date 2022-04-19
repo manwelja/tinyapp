@@ -17,6 +17,32 @@ app.get("/", (req,res) => {
   res.send("Hello!");
 });
 
+//Catch when user clicks on "Create New URL"
+app.get("/urls/new", (req, res) => {
+  res.render("urls_new");
+});
+
+//catch when user clicks on the delete button
+app.post("/urls/:shortURL/delete", (req, res) => {
+  delete urlDatabase[req.params.shortURL];
+  res.redirect("/urls");
+});
+
+//
+app.get("/urls/:shortURL", (req, res) => {
+  //get the short URL from the URL string parameter and use it to retrieve the long URL
+  const shortURL = req.params.shortURL;
+  const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL };
+  res.render("urls_show", templateVars);
+});
+
+//Redirect to the shortened URL specified by the user
+app.get("/u/:shortURL", (req, res) => {
+  const longURL = urlDatabase[req.params.shortURL];
+  //need to catch error if page not found
+  res.redirect(longURL, false);
+});
+
 //Load main page with contents of URL "Database"
 app.get("/urls", (req, res) => {
   const templateVars = { urls: urlDatabase };
@@ -28,30 +54,6 @@ app.post("/urls", (req, res) => {
   const sURL = generateRandomString();
   urlDatabase[sURL] = req.body.longURL;
   res.redirect("/urls/" + sURL);
-});
-
-//Catch when user clicks on "Create New URL"
-app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
-});
-
-//
-app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { urls: urlDatabase };
-  res.render("urls_index", templateVars);
-});
-
-//catch when user clicks on the delete button
-app.post("/urls/:shortURL/delete", (req, res) => {
-  delete urlDatabase[req.params.shortURL];
-  const templateVars = { urls: urlDatabase };
-  res.render("urls_index", templateVars);
-});
-
-//Redirect to the shortened URL specified by the user
-app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
-  res.redirect(longURL);
 });
 
 app.listen(PORT, () => {
