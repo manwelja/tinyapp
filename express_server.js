@@ -9,6 +9,9 @@ app.use(bodyParser.urlencoded({extended: true}));
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
+const { users } = require("./users");
+
+
 app.set("view engine", "ejs");
 
 const urlDatabase = {
@@ -16,35 +19,79 @@ const urlDatabase = {
   "9sm5xk": "http://www.google.ca"
 };
 
-const getUserName = function(req) {
+const getUserID = function(req) {
   //return (!req.headers.cookie) ? "" : req.headers.cookie.split("=")[1];
-  return (!req.cookies["username"]) ? "" : req.cookies["username"];
+  return (!req.cookies["user_id"]) ? "" : req.cookies["user_id"];
 };
 
 app.get("/", (req,res) => {
   res.send("Hello!");
 });
 
-//Catch errors in the user specified long URL
+//catch errors in the user specified long URL
 app.get('/u/undefined', (req, res) => {
   res.send("Custom error landing page.");
 });
 
 //catch when user clicks on the login button
 app.post("/login", (req, res) => {
-  res.cookie("username", req.body.username);
+  if (req.body.user_id) {
+    res.cookie("user_id", req.body.user_id);
+  }
   res.redirect("/urls");
 });
 
 //catch when user logs out - clear their login cookie and redirect
 app.post("/logout", (req, res) => {
-  res.clearCookie("username");
+  res.clearCookie("user_id");
   res.redirect("/urls");
+});
+
+//catch when a user wants to register
+app.get('/register', (req, res) => {
+  let uID = '';
+  let email = '';
+  if (getUserID(req) !== "") {
+    uID = getUserID(req);
+    email = users[getUserID(req)].email;
+  }
+
+  const templateVars = { "user_id": uID, "email": email };
+  res.render("registration", templateVars);
+  
+});
+//catch when a user wants to register
+app.post('/register', (req, res) => {
+  console.log('register me')
+  let uID;
+  //generate a random user ID, is it already exists try again, and again...
+  do {
+    uID = '';
+    uID = generateRandomString();
+  } while (users[uID]);
+  
+  //create a new user in the "database"
+  users[uID] = { };
+  users[uID].id = uID;
+  users[uID].email = req.body.email;
+  users[uID].password = req.body.password;
+
+  res.cookie("user_id", uID);
+  res.redirect("/urls");
+  //const templateVars = { "user_id": getUserID(req) };
+  //res.render("registration", templateVars);
+  
 });
 
 //Catch when user clicks on "Create New URL"
 app.get("/urls/new", (req, res) => {
-  const templateVars = { "username": getUserName(req) };
+  let uID = '';
+  let email = '';
+  if (getUserID(req) !== "") {
+    uID = getUserID(req);
+    email = users[getUserID(req)].email;
+  }
+  const templateVars = { "user_id": uID, "email": email  };
   res.render("urls_new", templateVars);
 });
 
@@ -66,7 +113,14 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 //catch when user clicks on the edit button
 app.post("/urls/:shortURL/edit", (req, res) => {
   const shortURL = req.params.shortURL;
-  const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL, "username": getUserName(req) };
+  let uID = '';
+  let email = '';
+  if (getUserID(req) !== "") {
+    uID = getUserID(req);
+    email = users[getUserID(req)].email;
+  }
+  
+  const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL, "user_id": uID, "email": email  };
   res.render("urls_show", templateVars);
 });
 
@@ -75,7 +129,13 @@ app.post("/urls/:shortURL/edit", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   //get the short URL from the URL string parameter and use it to retrieve the long URL
   const shortURL = req.params.shortURL;
-  const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL, "username": getUserName(req) };
+  let uID = '';
+  let email = '';
+  if (getUserID(req) !== "") {
+    uID = getUserID(req);
+    email = users[getUserID(req)].email;
+  }
+  const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL, "user_id": uID, "email": email  };
   res.render("urls_show", templateVars);
 });
 
@@ -88,7 +148,15 @@ app.get("/u/:shortURL", (req, res) => {
 
 //Load main page with contents of URL "Database"
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase, "username": getUserName(req)};
+  let uID = '';
+  let email = '';
+
+  if (getUserID(req) !== "") {
+    uID = getUserID(req);
+    email = users[getUserID(req)].email;
+  }
+
+  const templateVars = { urls: urlDatabase, "user_id": uID, "email": email };
   res.render("urls_index", templateVars);
 });
 
@@ -96,7 +164,7 @@ app.get("/urls", (req, res) => {
 app.post("/urls", (req, res) => {
   const sURL = generateRandomString();
   urlDatabase[sURL] = req.body.longURL;
-  res.redirect("/urls/" + sURL); 
+  res.redirect("/urls/" + sURL);
 });
 
 app.listen(PORT, () => {
