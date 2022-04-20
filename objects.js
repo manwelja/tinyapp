@@ -11,4 +11,9 @@ const users = {
   }
 };
 
-module.exports = { users };
+const urlDatabase = {
+  "b2xVn2": "http://www.lighthouselabs.ca",
+  "9sm5xk": "http://www.google.ca"
+};
+
+module.exports = { users, urlDatabase };

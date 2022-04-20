@@ -9,47 +9,11 @@ app.use(bodyParser.urlencoded({extended: true}));
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
-const { users } = require("./users");
+const { users, urlDatabase } = require('./objects');
+const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid } = require('./helperFunctions');
 
 
 app.set("view engine", "ejs");
-
-const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xk": "http://www.google.ca"
-};
-
-const getUserID = function(req) {
-  //If not using parse-cookies
-  //return (!req.headers.cookie) ? "" : req.headers.cookie.split("=")[1];
-  return (!req.cookies["user_id"]) ? "" : req.cookies["user_id"];
-};
-const getUserIDFromEmail = function(uID) {
-  for (let key in users) {
-    if (users[key].email === uID) {
-      return users[key].id;
-    }
-  }
-  return '';
-};
-
-const userEmailExists = function(email) {
-  for (let key in users) {
-    if (users[key].email === email) {
-      return true;
-    }
-  }
-  return false;
-};
-
-const userIDExists = function(userID) {
-  for (let key in users) {
-    if (users[key].id === userID) {
-      return true;
-    }
-  }
-  return false;
-};
 
 app.get("/", (req,res) => {
   res.send("Hello!");
@@ -66,19 +30,29 @@ app.get("/login", (req, res) => {
   let email = '';
   const templateVars = { "user_id": uID, "email": email };
   res.render("login", templateVars);
-
-
 });
-//catch when user clicks on the login button
+
+//catch when user clicks on the login button - logging in with email address and password
 app.post("/login", (req, res) => {
   //get user id from email
   const uID = getUserIDFromEmail(req.body.email);
-  
+
+  //Return error if user ID doesn't exist
+  if (uID === undefined) {
+    res.status(403).send('A user with that e-mail cannot be found.');
+    return;
+  }
+  //Make sure the passowrd is valid
+  if (!isPasswordValid(uID, req.body.password)) {
+    res.status(403).send('Please enter a valid password.');
+    return;
+  }
   //make sure user exists
   if (!userEmailExists(req.body.email)) {
     res.status(400).send('Please enter a valid email address.');
     return;
   }
+
   if (uID) {
     res.cookie("user_id", uID);
   }

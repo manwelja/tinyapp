@@ -11,21 +11,21 @@
       </div>
     </div>
     <% if(!user_id) { %>
-      <form class="form-inline" action="./login" method="GET">
+      <form class="form-inline" action="../login" method="GET">
         <div class="mr-2">
             <button type="submit" class="btn btn-outline-dark">Login</button>
         </div>
         </form>
-        <form class="form-inline" action="./register" method="GET">
+        <form class="form-inline" action="../register" method="GET">
           <div class="mr-2">
              <button type="submit" class="btn btn-outline-dark">Register</button>
           </div>
         </form>
     <% } %>
     <% if(user_id) { %>
-      <form class="form-inline" action="/logout" method="POST">
+      <form class="form-inline" action="../logout" method="POST">
         <div class="row mr-2">
-          <label class="p-1 text-dark">Logged in as <%= email %></label>
+          <label class="p-1 text-dark">Logged in as <%= email %>!</label>
            <button type="submit" class="btn btn-outline-dark">Logout</button>
         </div>
       </form>
