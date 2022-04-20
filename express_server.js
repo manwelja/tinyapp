@@ -13,21 +13,44 @@ const urlDatabase = {
   "9sm5xk": "http://www.google.ca"
 };
 
+const getUserName = function(req) {
+  //console.log(res.cookie)
+  return (!req.headers.cookie) ? "" : req.headers.cookie.split("=")[1];
+};
+
 app.get("/", (req,res) => {
   res.send("Hello!");
 });
 
+//Catch errors in the user specified long URL
+app.get('/u/undefined', (req, res) => {
+  res.send("Custom error landing page.");
+});
+
+//catch when user clicks on the delete button
+app.post("/login", (req, res) => {
+  res.cookie("username", req.body.username);
+  res.redirect("/urls");
+});
+
+//catch when user logs out
+app.post("/logout", (req, res) => {
+  res.clearCookie("username");
+  res.redirect("/urls");
+});
+
 //Catch when user clicks on "Create New URL"
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  const templateVars = { "username": getUserName(req) };
+  res.render("urls_new", templateVars);
 });
 
 //catch when user clicks on the edit button
 app.post("/urls/:id", (req, res) => {
   const id = req.params.id;
   urlDatabase[id] = req.body.longURL;
-  console.log(urlDatabase);
   res.redirect("/urls");
+
 });
 
 //catch when user clicks on the delete button
@@ -36,11 +59,12 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls");
 });
 
+
 //catch when user clicks on the edit button
 app.post("/urls/:shortURL/edit", (req, res) => {
   //delete urlDatabase[req.params.shortURL];
   const shortURL = req.params.shortURL;
-  const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL };
+  const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL, "username": getUserName(req) };
   res.render("urls_show", templateVars);
 });
 
@@ -49,11 +73,11 @@ app.post("/urls/:shortURL/edit", (req, res) => {
 app.get("/urls/:shortURL", (req, res) => {
   //get the short URL from the URL string parameter and use it to retrieve the long URL
   const shortURL = req.params.shortURL;
-  const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL };
+  const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL, "username": getUserName(req) };
   res.render("urls_show", templateVars);
 });
 
-//Redirect to the shortened URL specified by the user
+//Redirect to the long URL specified by the user
 app.get("/u/:shortURL", (req, res) => {
   const longURL = urlDatabase[req.params.shortURL];
   //need to catch error if page not found
@@ -62,7 +86,7 @@ app.get("/u/:shortURL", (req, res) => {
 
 //Load main page with contents of URL "Database"
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase };
+  const templateVars = { urls: urlDatabase, "username": getUserName(req)};
   res.render("urls_index", templateVars);
 });
 
@@ -70,7 +94,7 @@ app.get("/urls", (req, res) => {
 app.post("/urls", (req, res) => {
   const sURL = generateRandomString();
   urlDatabase[sURL] = req.body.longURL;
-  res.redirect("/urls/" + sURL);
+  res.redirect("/urls/" + sURL); 
 });
 
 app.listen(PORT, () => {
