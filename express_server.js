@@ -10,7 +10,7 @@ const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
 const { users, urlDatabase } = require('./objects');
-const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid } = require('./helperFunctions');
+const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn } = require('./helperFunctions');
 
 
 app.set("view engine", "ejs");
@@ -49,7 +49,7 @@ app.post("/login", (req, res) => {
   }
   //make sure user exists
   if (!userEmailExists(req.body.email)) {
-    res.status(400).send('Please enter a valid email address.');
+    res.status(403).send('Please enter a valid email address.');
     return;
   }
 
@@ -111,6 +111,12 @@ app.post('/register', (req, res) => {
 
 //Catch when user clicks on "Create New URL"
 app.get("/urls/new", (req, res) => {
+  //make sure a user is logged in before  allowing them to edit
+  if (!isUserLoggedIn(req)) {
+    res.redirect("/login");
+    return;
+  }
+
   let uID = '';
   let email = '';
 
@@ -124,8 +130,15 @@ app.get("/urls/new", (req, res) => {
 
 //catch when user clicks on the edit button
 app.post("/urls/:id", (req, res) => {
+  if (!isUserLoggedIn(req)) {
+    //res.send("You must be logged in to update URLs.");
+    res.status(403);
+    res.redirect("/login");
+    return;
+  }
   const id = req.params.id;
-  urlDatabase[id] = req.body.longURL;
+  urlDatabase[id].longURL = req.body.longURL;
+  urlDatabase[id].userID = getUserID(req);
   res.redirect("/urls");
 
 });
@@ -146,7 +159,7 @@ app.post("/urls/:shortURL/edit", (req, res) => {
     email = users[getUserID(req)].email;
   }
   
-  const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL, "user_id": uID, "email": email  };
+  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "user_id": uID, "email": email  };
   res.render("urls_show", templateVars);
 });
 
@@ -160,13 +173,15 @@ app.get("/urls/:shortURL", (req, res) => {
     uID = getUserID(req);
     email = users[getUserID(req)].email;
   }
-  const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL, "user_id": uID, "email": email  };
+  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "user_id": uID, "email": email  };
   res.render("urls_show", templateVars);
 });
 
 //Redirect to the long URL specified by the user
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL];
+  console.log(urlDatabase)
+  console.log(req.params.shortURL);
+  const longURL = urlDatabase[req.params.shortURL].longURL;
   //need to catch error if page not found
   res.redirect(longURL);
 });
@@ -175,7 +190,6 @@ app.get("/u/:shortURL", (req, res) => {
 app.get("/urls", (req, res) => {
   let uID = '';
   let email = '';
-
   if (getUserID(req) !== "") {
     uID = getUserID(req);
     email = users[getUserID(req)].email;
@@ -186,8 +200,15 @@ app.get("/urls", (req, res) => {
 
 //Catch when user Submits a new url
 app.post("/urls", (req, res) => {
+  if (!isUserLoggedIn(req)) {
+    res.status(403).send('You must be logged in to add new URLs to the database.');
+    return;
+  }
   const sURL = generateRandomString();
-  urlDatabase[sURL] = req.body.longURL;
+  urlDatabase[sURL] = { };
+  urlDatabase[sURL].longURL = req.body.longURL;
+  urlDatabase[sURL].userID = getUserID(req);
+
   res.redirect("/urls/" + sURL);
 });
 
