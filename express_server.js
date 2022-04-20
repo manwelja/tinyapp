@@ -30,7 +30,7 @@ const getUserIDFromEmail = function(uID) {
       return users[key].id;
     }
   }
-  return 'false';
+  return '';
 };
 
 const userEmailExists = function(email) {
@@ -60,14 +60,24 @@ app.get('/u/undefined', (req, res) => {
   res.send("Custom error landing page.");
 });
 
+//catch requests for the login page
+app.get("/login", (req, res) => {
+  let uID = '';
+  let email = '';
+  const templateVars = { "user_id": uID, "email": email };
+  res.render("login", templateVars);
+
+
+});
 //catch when user clicks on the login button
 app.post("/login", (req, res) => {
   //get user id from email
-  const uID = getUserIDFromEmail(req.body.user_id);
+  const uID = getUserIDFromEmail(req.body.email);
+  
   //make sure user exists
-  if (!userEmailExists(req.body.user_id)) {
+  if (!userEmailExists(req.body.email)) {
     res.status(400).send('Please enter a valid email address.');
-    return res.redirect('/');
+    return;
   }
   if (uID) {
     res.cookie("user_id", uID);
@@ -100,11 +110,11 @@ app.post('/register', (req, res) => {
   //check to make sure the user entered an email and password and that the email hasn't already been used
   if (req.body.email === '' || req.body.password === '') {
     res.status(400).send('Please enter valid email and password.');
-    return res.redirect('/');
+    return;
   }
   if (userEmailExists(req.body.email)) {
     res.status(400).send('Email has already been registered.');
-    return res.redirect('/');
+    return;
   }
 
   let uID;
