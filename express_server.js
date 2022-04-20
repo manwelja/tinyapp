@@ -20,8 +20,35 @@ const urlDatabase = {
 };
 
 const getUserID = function(req) {
+  //If not using parse-cookies
   //return (!req.headers.cookie) ? "" : req.headers.cookie.split("=")[1];
   return (!req.cookies["user_id"]) ? "" : req.cookies["user_id"];
+};
+const getUserIDFromEmail = function(uID) {
+  for (let key in users) {
+    if (users[key].email === uID) {
+      return users[key].id;
+    }
+  }
+  return 'false';
+};
+
+const userEmailExists = function(email) {
+  for (let key in users) {
+    if (users[key].email === email) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const userIDExists = function(userID) {
+  for (let key in users) {
+    if (users[key].id === userID) {
+      return true;
+    }
+  }
+  return false;
 };
 
 app.get("/", (req,res) => {
@@ -35,8 +62,15 @@ app.get('/u/undefined', (req, res) => {
 
 //catch when user clicks on the login button
 app.post("/login", (req, res) => {
-  if (req.body.user_id) {
-    res.cookie("user_id", req.body.user_id);
+  //get user id from email
+  const uID = getUserIDFromEmail(req.body.user_id);
+  //make sure user exists
+  if (!userEmailExists(req.body.user_id)) {
+    res.status(400).send('Please enter a valid email address.');
+    return res.redirect('/');
+  }
+  if (uID) {
+    res.cookie("user_id", uID);
   }
   res.redirect("/urls");
 });
@@ -51,18 +85,28 @@ app.post("/logout", (req, res) => {
 app.get('/register', (req, res) => {
   let uID = '';
   let email = '';
-  if (getUserID(req) !== "") {
+
+  //set uID and email of current user for templateVars if they exist
+  if (getUserID(req) !== "" && Object.keys(users).indexOf(getUserID(req)) >= 0) {
     uID = getUserID(req);
     email = users[getUserID(req)].email;
   }
-
   const templateVars = { "user_id": uID, "email": email };
   res.render("registration", templateVars);
   
 });
 //catch when a user wants to register
 app.post('/register', (req, res) => {
-  console.log('register me')
+  //check to make sure the user entered an email and password and that the email hasn't already been used
+  if (req.body.email === '' || req.body.password === '') {
+    res.status(400).send('Please enter valid email and password.');
+    return res.redirect('/');
+  }
+  if (userEmailExists(req.body.email)) {
+    res.status(400).send('Email has already been registered.');
+    return res.redirect('/');
+  }
+
   let uID;
   //generate a random user ID, is it already exists try again, and again...
   do {
@@ -76,17 +120,16 @@ app.post('/register', (req, res) => {
   users[uID].email = req.body.email;
   users[uID].password = req.body.password;
 
+  //set a cookie with the user ID
   res.cookie("user_id", uID);
   res.redirect("/urls");
-  //const templateVars = { "user_id": getUserID(req) };
-  //res.render("registration", templateVars);
-  
 });
 
 //Catch when user clicks on "Create New URL"
 app.get("/urls/new", (req, res) => {
   let uID = '';
   let email = '';
+
   if (getUserID(req) !== "") {
     uID = getUserID(req);
     email = users[getUserID(req)].email;
@@ -109,7 +152,6 @@ app.post("/urls/:shortURL/delete", (req, res) => {
   res.redirect("/urls");
 });
 
-
 //catch when user clicks on the edit button
 app.post("/urls/:shortURL/edit", (req, res) => {
   const shortURL = req.params.shortURL;
@@ -123,7 +165,6 @@ app.post("/urls/:shortURL/edit", (req, res) => {
   const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL, "user_id": uID, "email": email  };
   res.render("urls_show", templateVars);
 });
-
 
 //catch when a shortURL is included in the URL and launch the "show" page for it
 app.get("/urls/:shortURL", (req, res) => {
@@ -155,7 +196,6 @@ app.get("/urls", (req, res) => {
     uID = getUserID(req);
     email = users[getUserID(req)].email;
   }
-
   const templateVars = { urls: urlDatabase, "user_id": uID, "email": email };
   res.render("urls_index", templateVars);
 });
