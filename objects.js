@@ -19,6 +19,10 @@ const urlDatabase = {
   "9sm5xk": {
     longURL: "http://www.google.ca",
     userID: "user2RandomID"
+  },
+  "9sm5xl": {
+    longURL: "http://www.costco.ca",
+    userID: "user2RandomID"
   }
 };
 

@@ -10,13 +10,13 @@ const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
 const { users, urlDatabase } = require('./objects');
-const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn } = require('./helperFunctions');
+const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError } = require('./helperFunctions');
 
 
 app.set("view engine", "ejs");
 
 app.get("/", (req,res) => {
-  res.send("Hello!");
+  res.redirect("/urls");
 });
 
 //catch errors in the user specified long URL
@@ -39,17 +39,20 @@ app.post("/login", (req, res) => {
 
   //Return error if user ID doesn't exist
   if (uID === undefined) {
-    res.status(403).send('A user with that e-mail cannot be found.');
+    const errMessage = 'A user with that e-mail cannot be found.';
+    userError(res, 403, errMessage);
     return;
   }
   //Make sure the passowrd is valid
   if (!isPasswordValid(uID, req.body.password)) {
-    res.status(403).send('Please enter a valid password.');
+    const errMessage = 'Please enter a valid password.';
+    userError(res, 403, errMessage);
     return;
   }
   //make sure user exists
   if (!userEmailExists(req.body.email)) {
-    res.status(403).send('Please enter a valid email address.');
+    const errMessage = 'Please enter a valid email address.';
+    userError(res, 403, errMessage);
     return;
   }
 
@@ -83,14 +86,16 @@ app.get('/register', (req, res) => {
 app.post('/register', (req, res) => {
   //check to make sure the user entered an email and password and that the email hasn't already been used
   if (req.body.email === '' || req.body.password === '') {
-    res.status(400).send('Please enter valid email and password.');
+    //res.status(400).send('Please enter valid email and password.');
+    const errMessage = "Please enter a valid email and password.";
+    userError(res, 400, errMessage);
     return;
   }
   if (userEmailExists(req.body.email)) {
-    res.status(400).send('Email has already been registered.');
+    const errMessage = "The specified email address has already been registered.";
+    userError(res, 400, errMessage);
     return;
   }
-
   let uID;
   //generate a random user ID, is it already exists try again, and again...
   do {
@@ -113,7 +118,8 @@ app.post('/register', (req, res) => {
 app.get("/urls/new", (req, res) => {
   //make sure a user is logged in before  allowing them to edit
   if (!isUserLoggedIn(req)) {
-    res.redirect("/login");
+    const errMessage = "Please <a href='/login'>log in</a> to create new URLs.";
+    userError(res, 403, errMessage);
     return;
   }
 
@@ -131,11 +137,11 @@ app.get("/urls/new", (req, res) => {
 //catch when user clicks on the edit button
 app.post("/urls/:id", (req, res) => {
   if (!isUserLoggedIn(req)) {
-    //res.send("You must be logged in to update URLs.");
-    res.status(403);
-    res.redirect("/login");
+    const errMessage = "Please <a href='/login'>log in</a> to update URLs.";
+    userError(res, 403, errMessage);
     return;
   }
+
   const id = req.params.id;
   urlDatabase[id].longURL = req.body.longURL;
   urlDatabase[id].userID = getUserID(req);
@@ -145,12 +151,26 @@ app.post("/urls/:id", (req, res) => {
 
 //catch when user clicks on the delete button
 app.post("/urls/:shortURL/delete", (req, res) => {
-  delete urlDatabase[req.params.shortURL];
+  const uID = getUserID(req);
+  const shortURL = req.params.shortURL;
+  const errMessage = "You do not have access to delete this URL.  Please <a href='/login'>log in</a> to continue";
+  
+  if (!isUserLoggedIn(req)) {
+    userError(res, 403, errMessage);
+    return;
+  }
+  if (urlDatabase[shortURL].userID === uID) {
+    delete urlDatabase[req.params.shortURL];
+  } else {
+    userError(res, 403, errMessage);
+    return;
+  }
   res.redirect("/urls");
 });
 
 //catch when user clicks on the edit button
 app.post("/urls/:shortURL/edit", (req, res) => {
+  const errMessage = "You do not have access to edit this URL.  Please <a href='/login'>log in</a> to continue";
   const shortURL = req.params.shortURL;
   let uID = '';
   let email = '';
@@ -158,7 +178,16 @@ app.post("/urls/:shortURL/edit", (req, res) => {
     uID = getUserID(req);
     email = users[getUserID(req)].email;
   }
-  
+
+  //return an error message if the user is not logged in, or the specified short url doesn't exist
+  if (!isUserLoggedIn(req)) {
+    userError(res, 403, errMessage);
+    return;
+  }
+  if (!urlDatabase[shortURL].userID === uID) {
+    userError(res, 403, errMessage);
+    return;
+  }
   const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "user_id": uID, "email": email  };
   res.render("urls_show", templateVars);
 });
@@ -173,14 +202,17 @@ app.get("/urls/:shortURL", (req, res) => {
     uID = getUserID(req);
     email = users[getUserID(req)].email;
   }
+  if (!shortURLExists(shortURL)) {
+    const errMessage = "The specified URL does not exist.";
+    userError(res, 404, errMessage);
+    return;
+  }
   const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "user_id": uID, "email": email  };
   res.render("urls_show", templateVars);
 });
 
 //Redirect to the long URL specified by the user
 app.get("/u/:shortURL", (req, res) => {
-  console.log(urlDatabase)
-  console.log(req.params.shortURL);
   const longURL = urlDatabase[req.params.shortURL].longURL;
   //need to catch error if page not found
   res.redirect(longURL);
@@ -190,18 +222,30 @@ app.get("/u/:shortURL", (req, res) => {
 app.get("/urls", (req, res) => {
   let uID = '';
   let email = '';
-  if (getUserID(req) !== "") {
+  let errMessage = '';
+  let urlDB = '';
+
+  if (!isUserLoggedIn(req)) {
+    errMessage = "Please <a href='/login'>log in</a> to see your list of URLs";
+    userError(res, 403, errMessage);
+    return;
+  } else {
     uID = getUserID(req);
-    email = users[getUserID(req)].email;
+    email = users[uID].email;
+    urlDB = urlsForUser(uID);
   }
-  const templateVars = { urls: urlDatabase, "user_id": uID, "email": email };
+
+  const templateVars = { urls: urlDB, "user_id": uID, "email": email, "message": errMessage };
   res.render("urls_index", templateVars);
 });
 
 //Catch when user Submits a new url
 app.post("/urls", (req, res) => {
+
   if (!isUserLoggedIn(req)) {
-    res.status(403).send('You must be logged in to add new URLs to the database.');
+    res.status(404);
+    const errMessage = "Please <a href='/login'>log in</a> to add new URLs to the database";
+    userError(res, 404, errMessage);
     return;
   }
   const sURL = generateRandomString();
@@ -211,6 +255,12 @@ app.post("/urls", (req, res) => {
 
   res.redirect("/urls/" + sURL);
 });
+
+//Redirect to the long URL specified by the user
+app.get("/urls/error_page", (req, res) => {
+  res.render("error_page");
+});
+
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);

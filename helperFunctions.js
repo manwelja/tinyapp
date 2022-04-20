@@ -1,4 +1,4 @@
-const { users } = require("./objects");
+const { users, urlDatabase } = require("./objects");
 
 const getUserID = function(req) {
   //If not using parse-cookies
@@ -15,6 +15,7 @@ const getUserIDFromEmail = function(email) {
   return undefined;
 };
 
+//Determine if the given email exists
 const userEmailExists = function(email) {
   for (let key in users) {
     if (users[key].email === email) {
@@ -24,13 +25,15 @@ const userEmailExists = function(email) {
   return false;
 };
 
-const isPasswordValid = function(userID, password) {
-  if (users[userID].password === password) {
+//Determines if the password matches the given user name
+const isPasswordValid = function(id, password) {
+  if (users[id].password === password) {
     return true;
   }
   return false;
 };
 
+//Determines if current useris logged in
 const isUserLoggedIn = function(req) {
   if (getUserID(req)  === "") {
     return false;
@@ -38,4 +41,32 @@ const isUserLoggedIn = function(req) {
   return true;
 };
 
-module.exports = { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn };
+//Return an object containing all short/long URLs belonging to the current user
+const urlsForUser = function(id) {
+  let result = {};
+  
+  for (let key in urlDatabase) {
+
+    if (urlDatabase[key].userID === id) {
+      result[key] = urlDatabase[key].longURL;
+    }
+  }
+  return result;
+};
+
+//Given a short URL, determines if it exists in the database
+const shortURLExists = function(sURL) {
+  if (urlDatabase[sURL] === undefined) {
+    return false;
+  }
+  return true;
+};
+
+//Function to take in an error code and message and alert the user accordingly
+const userError = function(res, returnCode, message) {
+  res.status(returnCode);
+  const templateVars = { "user_id": "", "email": "", "message": message };
+  res.render("error_page", templateVars);
+  return;
+};
+module.exports = { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError };
