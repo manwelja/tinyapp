@@ -6,6 +6,9 @@ const PORT = 8080;
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
+const cookieParser = require('cookie-parser');
+app.use(cookieParser());
+
 app.set("view engine", "ejs");
 
 const urlDatabase = {
@@ -14,8 +17,8 @@ const urlDatabase = {
 };
 
 const getUserName = function(req) {
-  //console.log(res.cookie)
-  return (!req.headers.cookie) ? "" : req.headers.cookie.split("=")[1];
+  //return (!req.headers.cookie) ? "" : req.headers.cookie.split("=")[1];
+  return (!req.cookies["username"]) ? "" : req.cookies["username"];
 };
 
 app.get("/", (req,res) => {
@@ -27,13 +30,13 @@ app.get('/u/undefined', (req, res) => {
   res.send("Custom error landing page.");
 });
 
-//catch when user clicks on the delete button
+//catch when user clicks on the login button
 app.post("/login", (req, res) => {
   res.cookie("username", req.body.username);
   res.redirect("/urls");
 });
 
-//catch when user logs out
+//catch when user logs out - clear their login cookie and redirect
 app.post("/logout", (req, res) => {
   res.clearCookie("username");
   res.redirect("/urls");
@@ -62,7 +65,6 @@ app.post("/urls/:shortURL/delete", (req, res) => {
 
 //catch when user clicks on the edit button
 app.post("/urls/:shortURL/edit", (req, res) => {
-  //delete urlDatabase[req.params.shortURL];
   const shortURL = req.params.shortURL;
   const templateVars = { longURL: urlDatabase[shortURL], shortURL: shortURL, "username": getUserName(req) };
   res.render("urls_show", templateVars);
