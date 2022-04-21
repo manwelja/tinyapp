@@ -1,4 +1,3 @@
-const { users, urlDatabase } = require("./objects");
 const bcrypt = require('bcryptjs');
 
 const getUserID = function(req) {
@@ -7,20 +6,19 @@ const getUserID = function(req) {
 };
 
 //Retrieve the user id associated witth the given email
-const getUserIDFromEmail = function(email) {
-  console.log(users)
-  for (let key in users) {
-    if (users[key].email === email) {
-      return users[key].id;
+const getUserIDFromEmail = function(email, database) {
+  for (let key in database) {
+    if (database[key].email === email) {
+      return database[key].id;
     }
   }
   return undefined;
 };
 
 //Determine if the given email exists
-const userEmailExists = function(email) {
-  for (let key in users) {
-    if (users[key].email === email) {
+const userEmailExists = function(email, database) {
+  for (let key in database) {
+    if (database[key].email === email) {
       return true;
     }
   }
@@ -28,8 +26,8 @@ const userEmailExists = function(email) {
 };
 
 //Determines if the password matches hashed password for the given user name
-const isPasswordValid = function(id, password) {
-  if (bcrypt.compareSync(password, users[id].password)) {
+const isPasswordValid = function(id, password, database) {
+  if (bcrypt.compareSync(password, database[id].password)) {
     return true;
   };
 };
@@ -43,21 +41,21 @@ const isUserLoggedIn = function(req) {
 };
 
 //Return an object containing all short/long URLs belonging to the current user
-const urlsForUser = function(id) {
+const urlsForUser = function(id, database) {
   let result = {};
   
-  for (let key in urlDatabase) {
+  for (let key in database) {
 
-    if (urlDatabase[key].userID === id) {
-      result[key] = urlDatabase[key].longURL;
+    if (database[key].userID === id) {
+      result[key] = database[key].longURL;
     }
   }
   return result;
 };
 
 //Given a short URL, determines if it exists in the database
-const shortURLExists = function(sURL) {
-  if (urlDatabase[sURL] === undefined) {
+const shortURLExists = function(sURL, database) {
+  if (database[sURL] === undefined) {
     return false;
   }
   return true;
@@ -77,9 +75,5 @@ const hashPassword = function(password) {
   const hashedPassword = bcrypt.hashSync(password, 10);
   return hashedPassword;
 };
-
-//temp code to hash hard coded passwords in user object
-users.userRandomID.password = bcrypt.hashSync(users.userRandomID.password);
-users.user2RandomID.password = bcrypt.hashSync(users.user2RandomID.password);
 
 module.exports = { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError, hashPassword };

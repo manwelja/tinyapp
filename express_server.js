@@ -10,7 +10,7 @@ const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
 const { users, urlDatabase } = require('./objects');
-const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError, hashPassword } = require('./helperFunctions');
+const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError, hashPassword } = require('./helper');
 
 app.set("view engine", "ejs");
 
@@ -34,7 +34,7 @@ app.get("/login", (req, res) => {
 //catch when user clicks on the login button - logging in with email address and password
 app.post("/login", (req, res) => {
   //get user id from email
-  const uID = getUserIDFromEmail(req.body.email);
+  const uID = getUserIDFromEmail(req.body.email, users);
 
   //Return error if user ID doesn't exist
   if (uID === undefined) {
@@ -43,13 +43,13 @@ app.post("/login", (req, res) => {
     return;
   }
   //Make sure the password is valid
-  if (!isPasswordValid(uID, req.body.password)) {
+  if (!isPasswordValid(uID, req.body.password, users)) {
     const errMessage = 'Please enter a valid password.';
     userError(res, 403, errMessage);
     return;
   }
   //make sure user exists
-  if (!userEmailExists(req.body.email)) {
+  if (!userEmailExists(req.body.email, users)) {
     const errMessage = 'Please enter a valid email address.';
     userError(res, 403, errMessage);
     return;
@@ -90,7 +90,7 @@ app.post('/register', (req, res) => {
     userError(res, 400, errMessage);
     return;
   }
-  if (userEmailExists(req.body.email)) {
+  if (userEmailExists(req.body.email, users)) {
     const errMessage = "The specified email address has already been registered.";
     userError(res, 400, errMessage);
     return;
@@ -201,7 +201,7 @@ app.get("/urls/:shortURL", (req, res) => {
     uID = getUserID(req);
     email = users[getUserID(req)].email;
   }
-  if (!shortURLExists(shortURL)) {
+  if (!shortURLExists(shortURL, urlDatabase)) {
     const errMessage = "The specified URL does not exist.";
     userError(res, 404, errMessage);
     return;
@@ -212,9 +212,15 @@ app.get("/urls/:shortURL", (req, res) => {
 
 //Redirect to the long URL specified by the user
 app.get("/u/:shortURL", (req, res) => {
-  const longURL = urlDatabase[req.params.shortURL].longURL;
-  //need to catch error if page not found
-  res.redirect(longURL);
+  try {
+    const longURL = urlDatabase[req.params.shortURL].longURL;
+    //need to catch error if page not found
+    res.redirect(longURL);
+  } catch (err) {
+    const errMessage = "An error was encountered with the specified URL.";
+    userError(res, 404, errMessage);
+  }
+  return;
 });
 
 //Load main page with contents of URL "Database"
@@ -231,7 +237,7 @@ app.get("/urls", (req, res) => {
   } else {
     uID = getUserID(req);
     email = users[uID].email;
-    urlDB = urlsForUser(uID);
+    urlDB = urlsForUser(uID, urlDatabase);
   }
 
   const templateVars = { urls: urlDB, "user_id": uID, "email": email, "message": errMessage };
@@ -264,3 +270,9 @@ app.get("/urls/error_page", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
+
+
+//temp code to hash hard coded passwords in user object
+const bcrypt = require('bcryptjs');
+users.userRandomID.password = bcrypt.hashSync(users.userRandomID.password);
+users.user2RandomID.password = bcrypt.hashSync(users.user2RandomID.password);
