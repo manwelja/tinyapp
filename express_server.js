@@ -55,7 +55,7 @@ app.post("/login", (req, res) => {
   
   //Return error if user ID doesn't exist
   if (uID === undefined) {
-    const errMessage = 'A user with that e-mail cannot be found.';
+    const errMessage = "A user with that e-mail cannot be found.  Please <a href='/register'>register</a> if you don't yet have an account.";
     userError(res, 403, errMessage);
     return;
   }
@@ -148,71 +148,10 @@ app.post("/urls/logout", (req, res) => {
   res.redirect("/urls");
 });
 
-
-//catch when user clicks on the edit button
-app.post("/urls/:id", (req, res) => {
-  if (!isUserLoggedIn(req)) {
-    const errMessage = "Please <a href='/login'>log in</a> to update URLs.";
-    userError(res, 403, errMessage);
-    return;
-  } 
-
-  if (getUserID(req) !== "") {
-    const id = req.params.id;
-    urlDatabase[id].longURL = req.body.longURL;
-    urlDatabase[id].userID = getUserID(req);
-  }
-  
-  res.redirect("/urls");
-});
-
-//catch when user clicks on the delete button
-app.post("/urls/:shortURL/delete", (req, res) => {
-  const uID = getUserID(req);
-  const shortURL = req.params.shortURL;
-  const errMessage = "You do not have access to delete this URL.  Please <a href='/login'>log in</a> to continue";
-  
-  if (!isUserLoggedIn(req)) {
-    userError(res, 403, errMessage);
-    return;
-  }
-  if (urlDatabase[shortURL].userID === uID) {
-    delete urlDatabase[req.params.shortURL];
-  } else {
-    userError(res, 403, errMessage);
-    return;
-  }
-  res.redirect("/urls");
-});
-
-//catch when user clicks on the edit button
-app.post("/urls/:shortURL/edit", (req, res) => {
-  const errMessage = "You do not have access to edit this URL.  Please <a href='/login'>log in</a> to continue";
-  const shortURL = req.params.shortURL;
-  let uID = '';
-  let email = '';
-  if (getUserID(req) !== "") {
-    uID = getUserID(req);
-    email = users[getUserID(req)].email;
-  }
-
-  //return an error message if the user is not logged in, or the specified short url doesn't exist
-  if (!isUserLoggedIn(req)) {
-    userError(res, 403, errMessage);
-    return;
-  }
-  if (!urlDatabase[shortURL].userID === uID) {
-    userError(res, 403, errMessage);
-    return;
-  }
-  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email  };
-  res.render("urls_show", templateVars);
-});
-
 //catch when a shortURL is included in the URL and launch the "show" page for it
-app.get("/urls/:shortURL", (req, res) => {
+app.get("/urls/:id", (req, res) => {
   //get the short URL from the URL string parameter and use it to retrieve the long URL
-  const shortURL = req.params.shortURL;
+  const shortURL = req.params.id;
   let uID = '';
   let email = '';
   if (getUserID(req) !== "") {
@@ -235,6 +174,65 @@ app.get("/urls/:shortURL", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
+//catch when user clicks on the edit button
+app.post("/urls/:id", (req, res) => {
+  if (!isUserLoggedIn(req)) {
+    const errMessage = "Please <a href='/login'>log in</a> to update URLs.";
+    userError(res, 403, errMessage);
+    return;
+  }
+  if (getUserID(req) !== "") {
+    const id = req.params.id;
+    urlDatabase[id].longURL = req.body.longURL;
+    urlDatabase[id].userID = getUserID(req);
+  }
+  
+  res.redirect("/urls");
+});
+
+//catch when user clicks on the delete button
+app.post("/urls/:id/delete", (req, res) => {
+  const uID = getUserID(req);
+  const shortURL = req.params.id;
+  const errMessage = "You do not have access to delete this URL.  Please <a href='/login'>log in</a> to continue";
+
+  if (!isUserLoggedIn(req)) {
+    userError(res, 403, errMessage);
+    return;
+  }
+  if (urlDatabase[shortURL].userID === uID) {
+    delete urlDatabase[shortURL];
+  } else {
+    userError(res, 403, errMessage);
+    return;
+  }
+  res.redirect("/urls");
+});
+
+//catch when user clicks on the edit button
+app.post("/urls/:id/edit", (req, res) => {
+  const errMessage = "You do not have access to edit this URL.  Please <a href='/login'>log in</a> to continue";
+  const shortURL = req.params.id;
+  let uID = '';
+  let email = '';
+  if (getUserID(req) !== "") {
+    uID = getUserID(req);
+    email = users[getUserID(req)].email;
+  }
+
+  //return an error message if the user is not logged in, or the specified short url doesn't exist
+  if (!isUserLoggedIn(req)) {
+    userError(res, 403, errMessage);
+    return;
+  }
+  if (!urlDatabase[shortURL].userID === uID) {
+    userError(res, 403, errMessage);
+    return;
+  }
+  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email  };
+  res.render("urls_show", templateVars);
+});
+
 //Redirect to the long URL specified by the user
 app.get("/u/:shortURL", (req, res) => {
   try {
@@ -247,6 +245,7 @@ app.get("/u/:shortURL", (req, res) => {
   }
   return;
 });
+
 
 //Load main page with contents of URL "Database"
 app.get("/urls", (req, res) => {
