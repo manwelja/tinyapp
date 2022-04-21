@@ -32,6 +32,14 @@ app.get('/u/undefined', (req, res) => {
   res.send("Custom error landing page.");
 });
 
+//catch when user logs out - clear their login cookie and redirect
+app.post("/logout", (req, res) => {
+  delete req.session.userID;
+  delete req.session;
+  res.redirect("/urls");
+});
+
+
 //catch requests for the login page
 app.get("/login", (req, res) => {
   let uID = '';
@@ -70,13 +78,6 @@ app.post("/login", (req, res) => {
   res.redirect("/urls");
 });
 
-//catch when user logs out - clear their login cookie and redirect
-app.post("/logout", (req, res) => {
-  delete req.session.userID;
-  delete req.session;
-  res.redirect("/urls");
-});
-
 //catch when a user wants to register
 app.get('/register', (req, res) => {
   let uID = '';
@@ -95,7 +96,6 @@ app.get('/register', (req, res) => {
 app.post('/register', (req, res) => {
   //check to make sure the user entered an email and password and that the email hasn't already been used
   if (req.body.email === '' || req.body.password === '') {
-    //res.status(400).send('Please enter valid email and password.');
     const errMessage = "Please enter a valid email and password.";
     userError(res, 400, errMessage);
     return;
@@ -117,9 +117,7 @@ app.post('/register', (req, res) => {
   users[uID].id = uID;
   users[uID].email = req.body.email;
   users[uID].password = hashPassword(req.body.password);
-//console.log(users)
   //set a cookie with the user ID
-  //res.cookie("userID", uID);
   req.session.userID = uID;
   res.redirect("/urls");
 });
@@ -143,6 +141,13 @@ app.get("/urls/new", (req, res) => {
   const templateVars = { "userID": uID, "email": email  };
   res.render("urls_new", templateVars);
 });
+//catch when user logs out - clear their login cookie and redirect
+app.post("/urls/logout", (req, res) => {
+  delete req.session.userID;
+  delete req.session;
+  res.redirect("/urls");
+});
+
 
 //catch when user clicks on the edit button
 app.post("/urls/:id", (req, res) => {
@@ -150,11 +155,14 @@ app.post("/urls/:id", (req, res) => {
     const errMessage = "Please <a href='/login'>log in</a> to update URLs.";
     userError(res, 403, errMessage);
     return;
+  } 
+
+  if (getUserID(req) !== "") {
+    const id = req.params.id;
+    urlDatabase[id].longURL = req.body.longURL;
+    urlDatabase[id].userID = getUserID(req);
   }
- 
-  const id = req.params.id;
-  urlDatabase[id].longURL = req.body.longURL;
-  urlDatabase[id].userID = getUserID(req);
+  
   res.redirect("/urls");
 });
 
@@ -282,7 +290,6 @@ app.post("/urls", (req, res) => {
 app.get("/urls/error_page", (req, res) => {
   res.render("error_page");
 });
-
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
