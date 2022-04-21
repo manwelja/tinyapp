@@ -1,5 +1,4 @@
 const express = require("express");
-const { generateRandomString } = require('./generateRandomString');
 const app = express();
 app.use(express.urlencoded({ extended: false }));
 const PORT = 8080;
@@ -15,7 +14,7 @@ app.use(cookieSession({  //req.session
 
 
 const { users, urlDatabase, salt } = require('./variables');
-const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError, hashPassword } = require('./helpers');
+const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError, hashPassword, generateRandomString } = require('./helpers');
 
 app.set("view engine", "ejs");
 
@@ -226,6 +225,30 @@ app.post("/urls/:id/edit", (req, res) => {
     return;
   }
   if (!urlDatabase[shortURL].userID === uID) {
+    userError(res, 403, errMessage);
+    return;
+  }
+  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email  };
+  res.render("urls_show", templateVars);
+});
+
+//catch when user navigates to the edit page
+app.get("/urls/:id/edit", (req, res) => {
+  const errMessage = "You do not have access to this page.";
+  const shortURL = req.params.id;
+  let uID = '';
+  let email = '';
+  
+  if (getUserID(req) !== "") {
+    uID = getUserID(req);
+    email = users[getUserID(req)].email;
+  }
+  //return an error message if the user is not logged in, or the specified short url doesn't exist
+  if (!isUserLoggedIn(req)) {
+    userError(res, 403, errMessage);
+    return;
+  }
+  if (urlDatabase[shortURL].userID !== uID) {
     userError(res, 403, errMessage);
     return;
   }
