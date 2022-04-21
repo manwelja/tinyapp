@@ -10,8 +10,7 @@ const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 
 const { users, urlDatabase } = require('./objects');
-const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError } = require('./helperFunctions');
-
+const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError, hashPassword } = require('./helperFunctions');
 
 app.set("view engine", "ejs");
 
@@ -43,7 +42,7 @@ app.post("/login", (req, res) => {
     userError(res, 403, errMessage);
     return;
   }
-  //Make sure the passowrd is valid
+  //Make sure the password is valid
   if (!isPasswordValid(uID, req.body.password)) {
     const errMessage = 'Please enter a valid password.';
     userError(res, 403, errMessage);
@@ -107,7 +106,7 @@ app.post('/register', (req, res) => {
   users[uID] = { };
   users[uID].id = uID;
   users[uID].email = req.body.email;
-  users[uID].password = req.body.password;
+  users[uID].password = hashPassword(req.body.password);
 
   //set a cookie with the user ID
   res.cookie("user_id", uID);

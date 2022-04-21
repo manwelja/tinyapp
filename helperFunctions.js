@@ -1,4 +1,5 @@
 const { users, urlDatabase } = require("./objects");
+const bcrypt = require('bcryptjs');
 
 const getUserID = function(req) {
   //If not using parse-cookies
@@ -7,6 +8,7 @@ const getUserID = function(req) {
 
 //Retrieve the user id associated witth the given email
 const getUserIDFromEmail = function(email) {
+  console.log(users)
   for (let key in users) {
     if (users[key].email === email) {
       return users[key].id;
@@ -25,12 +27,11 @@ const userEmailExists = function(email) {
   return false;
 };
 
-//Determines if the password matches the given user name
+//Determines if the password matches hashed password for the given user name
 const isPasswordValid = function(id, password) {
-  if (users[id].password === password) {
+  if (bcrypt.compareSync(password, users[id].password)) {
     return true;
-  }
-  return false;
+  };
 };
 
 //Determines if current useris logged in
@@ -69,4 +70,16 @@ const userError = function(res, returnCode, message) {
   res.render("error_page", templateVars);
   return;
 };
-module.exports = { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError };
+
+//Function to take in an error code and message and alert the user accordingly
+const hashPassword = function(password) {
+  //const password = "purple-monkey-dinosaur"; // found in the req.params object
+  const hashedPassword = bcrypt.hashSync(password, 10);
+  return hashedPassword;
+};
+
+//temp code to hash hard coded passwords in user object
+users.userRandomID.password = bcrypt.hashSync(users.userRandomID.password);
+users.user2RandomID.password = bcrypt.hashSync(users.user2RandomID.password);
+
+module.exports = { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError, hashPassword };
