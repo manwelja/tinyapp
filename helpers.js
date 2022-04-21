@@ -1,8 +1,9 @@
 const bcrypt = require('bcryptjs');
+const {salt} = require('./variables');
 
 const getUserID = function(req) {
   //If not using parse-cookies
-  return (!req.cookies["user_id"]) ? "" : req.cookies["user_id"];
+  return (!req.session.userID) ? "" : req.session.userID;
 };
 
 //Retrieve the user id associated witth the given email
@@ -29,10 +30,11 @@ const userEmailExists = function(email, database) {
 const isPasswordValid = function(id, password, database) {
   if (bcrypt.compareSync(password, database[id].password)) {
     return true;
-  };
+  }
+  return false;
 };
 
-//Determines if current useris logged in
+//Determines if current user is logged in
 const isUserLoggedIn = function(req) {
   if (getUserID(req)  === "") {
     return false;
@@ -64,15 +66,14 @@ const shortURLExists = function(sURL, database) {
 //Function to take in an error code and message and alert the user accordingly
 const userError = function(res, returnCode, message) {
   res.status(returnCode);
-  const templateVars = { "user_id": "", "email": "", "message": message };
+  const templateVars = { "userID": "", "email": "", "message": message };
   res.render("error_page", templateVars);
   return;
 };
 
-//Function to take in an error code and message and alert the user accordingly
+//Function to take in a password and returns a hashed password
 const hashPassword = function(password) {
-  //const password = "purple-monkey-dinosaur"; // found in the req.params object
-  const hashedPassword = bcrypt.hashSync(password, 10);
+  const hashedPassword = bcrypt.hashSync(password, salt);
   return hashedPassword;
 };
 

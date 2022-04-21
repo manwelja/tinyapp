@@ -1,13 +1,17 @@
+//temp code to hash hard coded passwords in user object
+const bcrypt = require('bcryptjs');
+const salt = bcrypt.genSaltSync(10);
+
 const users = {
   "userRandomID": {
     id: "userRandomID",
     email: "user@example.com",
-    password: "purple-monkey-dinosaur"
+    password: bcrypt.hashSync("purple-monkey-dinosaur", salt)
   },
  "user2RandomID": {
     id: "user2RandomID",
     email: "user2@example.com",
-    password: "dishwasher-funk"
+    password: bcrypt.hashSync("dishwasher-funk", salt)
   }
 };
 
@@ -26,4 +30,4 @@ const urlDatabase = {
   }
 };
 
-module.exports = { users, urlDatabase };
+module.exports = { users, urlDatabase, salt };

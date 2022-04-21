@@ -1,21 +1,30 @@
 const express = require("express");
 const { generateRandomString } = require('./generateRandomString');
 const app = express();
+app.use(express.urlencoded({ extended: false }));
 const PORT = 8080;
 
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
-const cookieParser = require('cookie-parser');
-app.use(cookieParser());
+const cookieSession = require('cookie-session');
+app.use(cookieSession({  //req.session
+  name: 'session',
+  keys: ['long keys are good keys']
+}));
 
-const { users, urlDatabase } = require('./objects');
-const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError, hashPassword } = require('./helper');
+
+const { users, urlDatabase, salt } = require('./variables');
+const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError, hashPassword } = require('./helpers');
 
 app.set("view engine", "ejs");
 
 app.get("/", (req,res) => {
-  res.redirect("/urls");
+  if (isUserLoggedIn(req)) {
+    res.redirect("/urls");
+  } else {
+    res.redirect("/login");
+  }
 });
 
 //catch errors in the user specified long URL
@@ -27,7 +36,7 @@ app.get('/u/undefined', (req, res) => {
 app.get("/login", (req, res) => {
   let uID = '';
   let email = '';
-  const templateVars = { "user_id": uID, "email": email };
+  const templateVars = { "userID": uID, "email": email };
   res.render("login", templateVars);
 });
 
@@ -35,7 +44,7 @@ app.get("/login", (req, res) => {
 app.post("/login", (req, res) => {
   //get user id from email
   const uID = getUserIDFromEmail(req.body.email, users);
-
+  
   //Return error if user ID doesn't exist
   if (uID === undefined) {
     const errMessage = 'A user with that e-mail cannot be found.';
@@ -56,14 +65,15 @@ app.post("/login", (req, res) => {
   }
 
   if (uID) {
-    res.cookie("user_id", uID);
+    req.session.userID = uID;
   }
   res.redirect("/urls");
 });
 
 //catch when user logs out - clear their login cookie and redirect
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  delete req.session.userID;
+  delete req.session;
   res.redirect("/urls");
 });
 
@@ -77,7 +87,7 @@ app.get('/register', (req, res) => {
     uID = getUserID(req);
     email = users[getUserID(req)].email;
   }
-  const templateVars = { "user_id": uID, "email": email };
+  const templateVars = { "userID": uID, "email": email };
   res.render("registration", templateVars);
   
 });
@@ -107,9 +117,10 @@ app.post('/register', (req, res) => {
   users[uID].id = uID;
   users[uID].email = req.body.email;
   users[uID].password = hashPassword(req.body.password);
-
+//console.log(users)
   //set a cookie with the user ID
-  res.cookie("user_id", uID);
+  //res.cookie("userID", uID);
+  req.session.userID = uID;
   res.redirect("/urls");
 });
 
@@ -129,7 +140,7 @@ app.get("/urls/new", (req, res) => {
     uID = getUserID(req);
     email = users[getUserID(req)].email;
   }
-  const templateVars = { "user_id": uID, "email": email  };
+  const templateVars = { "userID": uID, "email": email  };
   res.render("urls_new", templateVars);
 });
 
@@ -140,12 +151,11 @@ app.post("/urls/:id", (req, res) => {
     userError(res, 403, errMessage);
     return;
   }
-
+ 
   const id = req.params.id;
   urlDatabase[id].longURL = req.body.longURL;
   urlDatabase[id].userID = getUserID(req);
   res.redirect("/urls");
-
 });
 
 //catch when user clicks on the delete button
@@ -187,7 +197,7 @@ app.post("/urls/:shortURL/edit", (req, res) => {
     userError(res, 403, errMessage);
     return;
   }
-  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "user_id": uID, "email": email  };
+  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email  };
   res.render("urls_show", templateVars);
 });
 
@@ -206,7 +216,14 @@ app.get("/urls/:shortURL", (req, res) => {
     userError(res, 404, errMessage);
     return;
   }
-  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "user_id": uID, "email": email  };
+  //make sure page belongs to the current user
+  const userURLs = urlsForUser(getUserID(req), urlDatabase);
+  if (Object.keys(userURLs).indexOf(shortURL) < 0) {
+    const errMessage = "You do not have access to this page.";
+    userError(res, 403, errMessage);
+    return;
+  }
+  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email  };
   res.render("urls_show", templateVars);
 });
 
@@ -240,7 +257,7 @@ app.get("/urls", (req, res) => {
     urlDB = urlsForUser(uID, urlDatabase);
   }
 
-  const templateVars = { urls: urlDB, "user_id": uID, "email": email, "message": errMessage };
+  const templateVars = { urls: urlDB, "userID": uID, "email": email, "message": errMessage };
   res.render("urls_index", templateVars);
 });
 
@@ -250,7 +267,7 @@ app.post("/urls", (req, res) => {
   if (!isUserLoggedIn(req)) {
     res.status(404);
     const errMessage = "Please <a href='/login'>log in</a> to add new URLs to the database";
-    userError(res, 404, errMessage);
+    userError(res, 403, errMessage);
     return;
   }
   const sURL = generateRandomString();
@@ -270,9 +287,3 @@ app.get("/urls/error_page", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
-
-
-//temp code to hash hard coded passwords in user object
-const bcrypt = require('bcryptjs');
-users.userRandomID.password = bcrypt.hashSync(users.userRandomID.password);
-users.user2RandomID.password = bcrypt.hashSync(users.user2RandomID.password);
