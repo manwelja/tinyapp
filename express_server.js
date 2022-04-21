@@ -55,19 +55,19 @@ app.post("/login", (req, res) => {
   //Return error if user ID doesn't exist
   if (uID === undefined) {
     const errMessage = "A user with that e-mail cannot be found.  Please <a href='/register'>register</a> if you don't yet have an account.";
-    userError(res, 403, errMessage);
+    userError(res, 403, "", "", errMessage);
     return;
   }
   //Make sure the password is valid
   if (!isPasswordValid(uID, req.body.password, users)) {
     const errMessage = 'Please enter a valid password.';
-    userError(res, 403, errMessage);
+    userError(res, 403, "", "", errMessage);
     return;
   }
   //make sure user exists
   if (!userEmailExists(req.body.email, users)) {
     const errMessage = 'Please enter a valid email address.';
-    userError(res, 403, errMessage);
+    userError(res, 403, "", "", errMessage);
     return;
   }
 
@@ -96,12 +96,12 @@ app.post('/register', (req, res) => {
   //check to make sure the user entered an email and password and that the email hasn't already been used
   if (req.body.email === '' || req.body.password === '') {
     const errMessage = "Please enter a valid email and password.";
-    userError(res, 400, errMessage);
+    userError(res, 400, "", "", errMessage);
     return;
   }
   if (userEmailExists(req.body.email, users)) {
     const errMessage = "The specified email address has already been registered.";
-    userError(res, 400, errMessage);
+    userError(res, 400, "", "", errMessage);
     return;
   }
   let uID;
@@ -126,7 +126,7 @@ app.get("/urls/new", (req, res) => {
   //make sure a user is logged in before  allowing them to edit
   if (!isUserLoggedIn(req)) {
     const errMessage = "Please <a href='/login'>log in</a> to create new URLs.";
-    userError(res, 403, errMessage);
+    userError(res, 403, "", "", errMessage);
     return;
   }
 
@@ -159,14 +159,14 @@ app.get("/urls/:id", (req, res) => {
   }
   if (!shortURLExists(shortURL, urlDatabase)) {
     const errMessage = "The specified URL does not exist.";
-    userError(res, 404, errMessage);
+    userError(res, 404, uID, email, errMessage);
     return;
   }
   //make sure page belongs to the current user
   const userURLs = urlsForUser(getUserID(req), urlDatabase);
   if (Object.keys(userURLs).indexOf(shortURL) < 0) {
     const errMessage = "You do not have access to this page.";
-    userError(res, 403, errMessage);
+    userError(res, 403, uID, email, errMessage);
     return;
   }
   const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email  };
@@ -177,7 +177,7 @@ app.get("/urls/:id", (req, res) => {
 app.post("/urls/:id", (req, res) => {
   if (!isUserLoggedIn(req)) {
     const errMessage = "Please <a href='/login'>log in</a> to update URLs.";
-    userError(res, 403, errMessage);
+    userError(res, 403, "", "", errMessage);
     return;
   }
   if (getUserID(req) !== "") {
@@ -196,15 +196,20 @@ app.post("/urls/:id/delete", (req, res) => {
   const errMessage = "You do not have access to delete this URL.  Please <a href='/login'>log in</a> to continue";
 
   if (!isUserLoggedIn(req)) {
-    userError(res, 403, errMessage);
+    userError(res, 403, "", "", errMessage);
     return;
   }
   if (urlDatabase[shortURL].userID === uID) {
     delete urlDatabase[shortURL];
   } else {
-    userError(res, 403, errMessage);
+    userError(res, 403, uID, "", errMessage);
     return;
   }
+  res.redirect("/urls");
+});
+
+//catch when user navigates to the delete page
+app.get("/urls/:id/delete", (req, res) => {
   res.redirect("/urls");
 });
 
@@ -221,11 +226,11 @@ app.post("/urls/:id/edit", (req, res) => {
 
   //return an error message if the user is not logged in, or the specified short url doesn't exist
   if (!isUserLoggedIn(req)) {
-    userError(res, 403, errMessage);
+    userError(res, 403, "", "", errMessage);
     return;
   }
   if (!urlDatabase[shortURL].userID === uID) {
-    userError(res, 403, errMessage);
+    userError(res, 403, uID, email, errMessage);
     return;
   }
   const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email  };
@@ -238,18 +243,18 @@ app.get("/urls/:id/edit", (req, res) => {
   const shortURL = req.params.id;
   let uID = '';
   let email = '';
-  
+
   if (getUserID(req) !== "") {
     uID = getUserID(req);
     email = users[getUserID(req)].email;
   }
   //return an error message if the user is not logged in, or the specified short url doesn't exist
   if (!isUserLoggedIn(req)) {
-    userError(res, 403, errMessage);
+    userError(res, 403, "", "", errMessage);
     return;
   }
   if (urlDatabase[shortURL].userID !== uID) {
-    userError(res, 403, errMessage);
+    userError(res, 403, uID, email, errMessage);
     return;
   }
   const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email  };
@@ -258,13 +263,20 @@ app.get("/urls/:id/edit", (req, res) => {
 
 //Redirect to the long URL specified by the user
 app.get("/u/:shortURL", (req, res) => {
+  let uID = '';
+  let email = '';
+
+  if (getUserID(req) !== "") {
+    uID = getUserID(req);
+    email = users[getUserID(req)].email;
+  }
   try {
     const longURL = urlDatabase[req.params.shortURL].longURL;
     //need to catch error if page not found
     res.redirect(longURL);
   } catch (err) {
     const errMessage = "An error was encountered with the specified URL.";
-    userError(res, 404, errMessage);
+    userError(res, 404, uID, email, errMessage);
   }
   return;
 });
@@ -279,7 +291,7 @@ app.get("/urls", (req, res) => {
 
   if (!isUserLoggedIn(req)) {
     errMessage = "Please <a href='/login'>log in</a> to see your list of URLs";
-    userError(res, 403, errMessage);
+    userError(res, 403, "", "", errMessage);
     return;
   } else {
     uID = getUserID(req);
@@ -297,7 +309,7 @@ app.post("/urls", (req, res) => {
   if (!isUserLoggedIn(req)) {
     res.status(404);
     const errMessage = "Please <a href='/login'>log in</a> to add new URLs to the database";
-    userError(res, 403, errMessage);
+    userError(res, 403, "", "", errMessage);
     return;
   }
   const sURL = generateRandomString();

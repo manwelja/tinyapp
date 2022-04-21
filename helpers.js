@@ -64,9 +64,9 @@ const shortURLExists = function(sURL, database) {
 };
 
 //Function to take in an error code and message and alert the user accordingly
-const userError = function(res, returnCode, message) {
+const userError = function(res, returnCode, userID, email, message) {
   res.status(returnCode);
-  const templateVars = { "userID": "", "email": "", "message": message };
+  const templateVars = { "userID": userID, "email": email, "message": message };
   res.render("error_page", templateVars);
   return;
 };
