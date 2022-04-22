@@ -6,6 +6,9 @@ const PORT = 8080;
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
+const methodOverride = require('method-override');
+app.use(methodOverride('_method'));
+
 const cookieSession = require('cookie-session');
 app.use(cookieSession({  //req.session
   name: 'session',
@@ -174,7 +177,7 @@ app.get("/urls/:id", (req, res) => {
 });
 
 //catch when user clicks on the edit button
-app.post("/urls/:id", (req, res) => {
+app.put("/urls/:id", (req, res) => {
   if (!isUserLoggedIn(req)) {
     const errMessage = "Please <a href='/login'>log in</a> to update URLs.";
     userError(res, 403, "", "", errMessage);
@@ -190,7 +193,8 @@ app.post("/urls/:id", (req, res) => {
 });
 
 //catch when user clicks on the delete button
-app.post("/urls/:id/delete", (req, res) => {
+app.delete("/urls/:id", (req, res) => {
+
   const uID = getUserID(req);
   const shortURL = req.params.id;
   const errMessage = "You do not have access to delete this URL.  Please <a href='/login'>log in</a> to continue";
@@ -214,7 +218,7 @@ app.get("/urls/:id/delete", (req, res) => {
 });
 
 //catch when user clicks on the edit button
-app.post("/urls/:id/edit", (req, res) => {
+app.put("/urls/:id/edit", (req, res) => {
   const errMessage = "You do not have access to edit this URL.  Please <a href='/login'>log in</a> to continue";
   const shortURL = req.params.id;
   let uID = '';
