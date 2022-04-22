@@ -35,7 +35,7 @@ app.get('/u/undefined', (req, res) => {
 });
 
 //catch when user logs out - clear their login cookie and redirect
-app.post("/logout", (req, res) => {
+app.put("/logout", (req, res) => {
   delete req.session.userID;
   delete req.session;
   res.redirect("/urls");
@@ -51,7 +51,7 @@ app.get("/login", (req, res) => {
 });
 
 //catch when user clicks on the login button - logging in with email address and password
-app.post("/login", (req, res) => {
+app.put("/login", (req, res) => {
   //get user id from email
   const uID = getUserIDFromEmail(req.body.email, users);
   
@@ -95,7 +95,7 @@ app.get('/register', (req, res) => {
   
 });
 //catch when a user wants to register
-app.post('/register', (req, res) => {
+app.put('/register', (req, res) => {
   //check to make sure the user entered an email and password and that the email hasn't already been used
   if (req.body.email === '' || req.body.password === '') {
     const errMessage = "Please enter a valid email and password.";
@@ -144,7 +144,7 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new", templateVars);
 });
 //catch when user logs out - clear their login cookie and redirect
-app.post("/urls/logout", (req, res) => {
+app.put("/urls/logout", (req, res) => {
   delete req.session.userID;
   delete req.session;
   res.redirect("/urls");
@@ -308,7 +308,7 @@ app.get("/urls", (req, res) => {
 });
 
 //Catch when user Submits a new url
-app.post("/urls", (req, res) => {
+app.put("/urls", (req, res) => {
 
   if (!isUserLoggedIn(req)) {
     res.status(404);
