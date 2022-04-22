@@ -16,7 +16,7 @@ app.use(cookieSession({  //req.session
 }));
 
 
-const { users, urlDatabase, salt } = require('./variables');
+const { users, urlDatabase } = require('./variables');
 const { getUserID, getUserIDFromEmail, userEmailExists, isPasswordValid, isUserLoggedIn, urlsForUser, shortURLExists, userError, hashPassword, generateRandomString } = require('./helpers');
 
 app.set("view engine", "ejs");
@@ -172,7 +172,11 @@ app.get("/urls/:id", (req, res) => {
     userError(res, 403, uID, email, errMessage);
     return;
   }
-  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email  };
+  //increment number of hits to the page
+  urlDatabase[shortURL].numVisits += 1;
+  const numVisits = urlDatabase[shortURL].numVisits;
+
+  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email, "numVisits": numVisits  };
   res.render("urls_show", templateVars);
 });
 
@@ -187,8 +191,9 @@ app.put("/urls/:id", (req, res) => {
     const id = req.params.id;
     urlDatabase[id].longURL = req.body.longURL;
     urlDatabase[id].userID = getUserID(req);
+    urlDatabase[id].numVisits += 1;
   }
-  
+ 
   res.redirect("/urls");
 });
 
@@ -237,7 +242,11 @@ app.put("/urls/:id/edit", (req, res) => {
     userError(res, 403, uID, email, errMessage);
     return;
   }
-  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email  };
+  //increment number of hits to the page
+  urlDatabase[shortURL].numVisits += 1;
+  const numVisits = urlDatabase[shortURL].numVisits;
+
+  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email, "numVisits": numVisits  };
   res.render("urls_show", templateVars);
 });
 
@@ -261,7 +270,11 @@ app.get("/urls/:id/edit", (req, res) => {
     userError(res, 403, uID, email, errMessage);
     return;
   }
-  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email  };
+  //increment number of hits to the page
+  urlDatabase[shortURL].numVisits += 1;
+  const numVisits = urlDatabase[shortURL].numVisits;
+
+  const templateVars = { longURL: urlDatabase[shortURL].longURL, shortURL: shortURL, "userID": uID, "email": email, "numVisits": numVisits };
   res.render("urls_show", templateVars);
 });
 
@@ -320,6 +333,7 @@ app.put("/urls", (req, res) => {
   urlDatabase[sURL] = { };
   urlDatabase[sURL].longURL = req.body.longURL;
   urlDatabase[sURL].userID = getUserID(req);
+  urlDatabase[sURL].numVisits = 0;
 
   res.redirect("/urls/" + sURL);
 });
